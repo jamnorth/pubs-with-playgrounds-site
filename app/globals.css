@@ -1,0 +1,5 @@
+:root { color-scheme: light; }
+body { margin: 0; }
+a { color: inherit; }
+button { cursor: pointer; }
+input, select, textarea, button { font: inherit; }
