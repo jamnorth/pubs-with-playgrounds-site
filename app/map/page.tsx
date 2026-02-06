@@ -8,7 +8,14 @@ import { geocodePlace } from "@/lib/geocode";
 
 import L from "leaflet";
 import type { LatLngExpression } from "leaflet";
-import { MapContainer, TileLayer, Circle, Marker, Popup } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Circle,
+  Marker,
+  Popup,
+  type MapContainerProps
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 useEffect(() => {
