@@ -205,7 +205,12 @@ export default function MapPage() {
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
       <div style={{ marginTop: 14, height: 620, border: "1px solid #ddd", borderRadius: 12, overflow: "hidden" }}>
-        <MapContainer center={[center?.lat || -27.4698, center?.lng || 153.0251]} zoom={zoom} style={{ height: "100%", width: "100%" }}>
+        <MapContainer
+  {...({
+    center: [center?.lat ?? -27.4698, center?.lng ?? 153.0251],
+    zoom: 13,
+    scrollWheelZoom: true
+  } as MapContainerProps)}
           <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {center && <Circle center={[center.lat, center.lng]} radius={radiusKm * 1000} />}
 
