@@ -1,6 +1,5 @@
 import dynamic from "next/dynamic";
 
-// Optional but helpful: stops Next trying to prerender this route at build time
 export const dynamic = "force-dynamic";
 
 const MapClient = dynamic(() => import("@/components/MapClient"), {
