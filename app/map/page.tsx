@@ -1,12 +1,9 @@
 import dynamic from "next/dynamic";
 
-const LeafletMapClient = dynamic(
-  () => import("@/components/LeafletMapClient"),
-  {
-    ssr: false,
-    loading: () => <div style={{ padding: 16 }}>Loading map…</div>,
-  }
-);
+const LeafletMapClient = dynamic(() => import("@/components/LeafletMapClient"), {
+  ssr: false,
+  loading: () => <div style={{ padding: 16 }}>Loading map…</div>,
+});
 
 export default function MapPage() {
   return (
