@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import NavigateModal from "@/components/NavigateModal";
+import NavigateModal from "../components/NavigateModal";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
-import { geocodePlace } from "@/lib/geocode";
+import { supabase } from "../lib/supabaseClient";
+import { geocodePlace } from "../lib/geocode";
 
 type Venue = {
   id: string;
