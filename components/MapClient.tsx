@@ -1,64 +1,61 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
+import type { LatLngTuple } from "leaflet";
+
+import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-type LatLng = { lat: number; lng: number };
-
-const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import("react-leaflet").then((m) => m.TileLayer), { ssr: false });
-const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), { ssr: false });
-const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), { ssr: false });
-
 export default function MapClient() {
-  const [ready, setReady] = useState(false);
-  const [center, setCenter] = useState<LatLng>({ lat: -27.4698, lng: 153.0251 });
+  // Default to Brisbane-ish so the map always has a valid center
+  const fallbackCenter: LatLngTuple = useMemo(() => [-27.4698, 153.0251], []);
 
+  const [center, setCenter] = useState<LatLngTuple>(fallbackCenter);
+
+  // Fix Leaflet marker icon paths in Next/Vercel builds
   useEffect(() => {
-    let mounted = true;
-
+    // IMPORTANT: Leaflet must only be imported in the browser
     (async () => {
-      const L = await import("leaflet"); // ✅ only on client
+      const L = (await import("leaflet")).default;
 
+      // @ts-expect-error - Leaflet's internal typing doesn't include _getIconUrl
       delete (L.Icon.Default.prototype as any)._getIconUrl;
+
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
         iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
         shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
-
-      if (navigator?.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            if (!mounted) return;
-            setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          },
-          () => {},
-          { enableHighAccuracy: true, timeout: 7000 }
-        );
-      }
-
-      if (mounted) setReady(true);
     })();
-
-    return () => {
-      mounted = false;
-    };
   }, []);
 
-  const mapCenter = useMemo(() => [center.lat, center.lng] as [number, number], [center]);
-
-  if (!ready) return <div style={{ padding: 16 }}>Loading map…</div>;
+  // Optional: use browser geolocation if available
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCenter([pos.coords.latitude, pos.coords.longitude]),
+      () => {}, // ignore errors
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, []);
 
   return (
-    <div style={{ marginTop: 14, height: 620, borderRadius: 12, overflow: "hidden" }}>
-      <MapContainer center={mapCenter} zoom={13} style={{ height: "100%", width: "100%" }}>
-        <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Marker position={mapCenter}>
-          <Popup>You are here (or Brisbane fallback)</Popup>
-        </Marker>
-      </MapContainer>
-    </div>
+    <MapContainer
+      center={center}
+      zoom={13}
+      style={{ height: "100%", width: "100%" }}
+      scrollWheelZoom
+    >
+      <TileLayer
+        attribution="&copy; OpenStreetMap contributors"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+
+      <Marker position={center}>
+        <Popup>You are here (or default location)</Popup>
+      </Marker>
+
+      <Circle center={center} radius={2000} />
+    </MapContainer>
   );
 }
