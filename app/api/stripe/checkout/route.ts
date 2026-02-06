@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 const PRICE_FEATURED_MONTHLY = process.env.STRIPE_PRICE_FEATURED_MONTHLY;
