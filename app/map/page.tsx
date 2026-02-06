@@ -6,8 +6,8 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { geocodePlace } from "@/lib/geocode";
 
-import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
-import L from "leaflet";
+import { MapContainer, TileLayer, Circle, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 
 // Fix default marker icons in Next bundling
 delete (L.Icon.Default.prototype as any)._getIconUrl;
