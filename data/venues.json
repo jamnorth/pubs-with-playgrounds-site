@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "name": "Example Pub",
+    "suburb": "West End",
+    "city": "Brisbane",
+    "state": "QLD",
+    "featured": true,
+    "playground": true,
+    "rating": 4.6,
+    "tags": ["Family friendly", "Beer garden"],
+    "website": "https://example.com"
+  },
+  {
+    "id": "2",
+    "name": "Example Tavern",
+    "suburb": "New Farm",
+    "city": "Brisbane",
+    "state": "QLD",
+    "featured": false,
+    "playground": true,
+    "rating": 4.2,
+    "tags": ["Kids meals"],
+    "website": "https://example.com"
+  }
+]
