@@ -19,8 +19,6 @@ export default function MapClient() {
       const L = (await import("leaflet")).default;
 
       // @ts-ignore - Leaflet typing mismatch in some builds
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-
 
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
