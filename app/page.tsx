@@ -17,48 +17,47 @@ export default function Page() {
   const [err, setErr] = useState<string | null>(null);
 
   async function load() {
-  setLoading(true);
-  setErr(null);
+    setLoading(true);
+    setErr(null);
 
-  const url = `/api/venues?q=${encodeURIComponent(q)}&city=${encodeURIComponent(
-    city
-  )}&sort=${encodeURIComponent(sort)}`;
+    const url = `/api/venues?q=${encodeURIComponent(q)}&city=${encodeURIComponent(
+      city
+    )}&sort=${encodeURIComponent(sort)}`;
 
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-
-    const text = await res.text();
-    let json: any = null;
     try {
-      json = text ? JSON.parse(text) : null;
-    } catch {
-      json = null;
-    }
+      const res = await fetch(url, { cache: "no-store" });
 
-    if (!res.ok) {
-      setErr(
-        (json && (json.error || json.message)) ||
-          `API error ${res.status}: ${text?.slice(0, 200) || "No response body"}`
-      );
+      const text = await res.text();
+      let json: any = null;
+
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch {
+        json = null;
+      }
+
+      if (!res.ok) {
+        setErr(
+          (json && (json.error || json.message)) ||
+            `API error ${res.status}: ${text?.slice(0, 200) || "No body"}`
+        );
+        setVenues([]);
+        setLoading(false);
+        return;
+      }
+
+      // ⭐ THE IMPORTANT FIX
+      const venuesArray =
+        json?.venues ?? json?.sample ?? (Array.isArray(json) ? json : []);
+
+      setVenues(Array.isArray(venuesArray) ? venuesArray : []);
+      setLoading(false);
+    } catch (e: any) {
+      setErr(e?.message || "Fetch failed (network error)");
       setVenues([]);
       setLoading(false);
-      return;
     }
-
-  const venuesArray =
-  (json && (json.venues ?? json.sample ?? json.data)) ??
-  (Array.isArray(json) ? json : null);
-
-  setVenues(Array.isArray(venuesArray) ? venuesArray : []);
-
-    setLoading(false);
-  } catch (e: any) {
-    setErr(e?.message || "Fetch failed (network error)");
-    setVenues([]);
-    setLoading(false);
   }
-}
-
 
   useEffect(() => {
     load();
