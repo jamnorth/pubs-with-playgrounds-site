@@ -45,9 +45,12 @@ export default function Page() {
       return;
     }
 
-    const venuesArray = Array.isArray(json) ? json : json?.venues;
+  const venuesArray =
+  (json && (json.venues ?? json.sample ?? json.data)) ??
+  (Array.isArray(json) ? json : null);
 
-    setVenues(Array.isArray(venuesArray) ? venuesArray : []);
+  setVenues(Array.isArray(venuesArray) ? venuesArray : []);
+
     setLoading(false);
   } catch (e: any) {
     setErr(e?.message || "Fetch failed (network error)");
