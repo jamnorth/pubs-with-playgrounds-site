@@ -30,7 +30,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("venues")
       .select("id,name,address")
-      .limit(5);
+      .limit(20);
 
     if (error) {
       return NextResponse.json(
