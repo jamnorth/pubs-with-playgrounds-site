@@ -16,25 +16,37 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // 🔥 debug
+  const [debug, setDebug] = useState<any>(null);
+
   async function load() {
     setLoading(true);
     setErr(null);
+    setDebug(null);
 
-    const url = `/api/venues?q=${encodeURIComponent(q)}&city=${encodeURIComponent(
+    const apiUrl = `/api/venues?q=${encodeURIComponent(q)}&city=${encodeURIComponent(
       city
     )}&sort=${encodeURIComponent(sort)}`;
 
     try {
-      const res = await fetch(url, { cache: "no-store" });
-
+      const res = await fetch(apiUrl, { cache: "no-store" });
       const text = await res.text();
-      let json: any = null;
 
+      let json: any = null;
       try {
         json = text ? JSON.parse(text) : null;
       } catch {
         json = null;
       }
+
+      // show what we got no matter what
+      setDebug({
+        request: apiUrl,
+        status: res.status,
+        ok: res.ok,
+        keys: json && typeof json === "object" ? Object.keys(json) : null,
+        preview: text?.slice(0, 500) || "(empty)",
+      });
 
       if (!res.ok) {
         setErr(
@@ -46,9 +58,9 @@ export default function Page() {
         return;
       }
 
-      // ⭐ THE IMPORTANT FIX
+      // ✅ accept all your API variants
       const venuesArray =
-        json?.venues ?? json?.sample ?? (Array.isArray(json) ? json : []);
+        json?.venues ?? json?.sample ?? json?.data ?? (Array.isArray(json) ? json : []);
 
       setVenues(Array.isArray(venuesArray) ? venuesArray : []);
       setLoading(false);
@@ -67,9 +79,7 @@ export default function Page() {
   return (
     <main style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
       <h1 style={{ fontSize: 28, marginBottom: 6 }}>Pubs with Playgrounds</h1>
-      <p style={{ opacity: 0.75, marginTop: 0 }}>
-        Demo search (Supabase-powered)
-      </p>
+      <p style={{ opacity: 0.75, marginTop: 0 }}>Demo search (Supabase-powered)</p>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "16px 0" }}>
         <input
@@ -94,10 +104,25 @@ export default function Page() {
       </div>
 
       {err && (
-        <pre style={{ background: "#fee", padding: 12, borderRadius: 8 }}>
+        <pre style={{ background: "#fee", padding: 12, borderRadius: 8, whiteSpace: "pre-wrap" }}>
           {err}
         </pre>
       )}
+
+      {/* 🔥 DEBUG BOX */}
+      <pre
+        style={{
+          background: "#f6f6f6",
+          padding: 12,
+          borderRadius: 8,
+          whiteSpace: "pre-wrap",
+          fontSize: 12,
+        }}
+      >
+        DEBUG:
+        {"\n"}
+        {debug ? JSON.stringify(debug, null, 2) : "(no debug yet)"}
+      </pre>
 
       <p style={{ marginTop: 8 }}>{venues.length} venues</p>
 
