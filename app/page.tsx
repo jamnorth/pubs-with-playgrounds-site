@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 type Venue = {
   id?: string;
-  name: string;
+  name?: string;
   address?: string;
 };
 
@@ -12,25 +12,41 @@ export default function Page() {
   const [q, setQ] = useState("");
   const [city, setCity] = useState("Brisbane");
   const [sort, setSort] = useState<"name" | "popular">("name");
+
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
-  // 🔥 debug
-  const [debug, setDebug] = useState<any>(null);
+  // Always-visible debug info
+  const [debug, setDebug] = useState<{
+    requestUrl: string;
+    status?: number;
+    ok?: boolean;
+    contentType?: string | null;
+    textPreview?: string;
+    jsonKeys?: string[];
+    parsedSampleCount?: number;
+    parsedVenuesCount?: number;
+    error?: string;
+    time?: string;
+  }>({
+    requestUrl: "",
+  });
 
   async function load() {
     setLoading(true);
-    setErr(null);
-    setDebug(null);
 
-    const apiUrl = `/api/venues?q=${encodeURIComponent(q)}&city=${encodeURIComponent(
+    const requestUrl = `/api/venues?q=${encodeURIComponent(q)}&city=${encodeURIComponent(
       city
     )}&sort=${encodeURIComponent(sort)}`;
 
+    const startTime = new Date().toLocaleTimeString();
+
     try {
-      const res = await fetch(apiUrl, { cache: "no-store" });
+      const res = await fetch(requestUrl, { cache: "no-store" });
+      const contentType = res.headers.get("content-type");
+
       const text = await res.text();
+      const textPreview = (text || "").slice(0, 600);
 
       let json: any = null;
       try {
@@ -39,34 +55,43 @@ export default function Page() {
         json = null;
       }
 
-      // show what we got no matter what
+      // Extract array from a bunch of possible shapes:
+      // { venues: [] } OR { sample: [] } OR { data: [] } OR [] directly
+      const venuesArray =
+        (json && (json.venues ?? json.sample ?? json.data)) ??
+        (Array.isArray(json) ? json : null);
+
+      const venuesList: Venue[] = Array.isArray(venuesArray) ? venuesArray : [];
+
+      setVenues(venuesList);
+
       setDebug({
-        request: apiUrl,
+        requestUrl,
         status: res.status,
         ok: res.ok,
-        keys: json && typeof json === "object" ? Object.keys(json) : null,
-        preview: text?.slice(0, 500) || "(empty)",
+        contentType,
+        textPreview,
+        jsonKeys: json && typeof json === "object" && !Array.isArray(json) ? Object.keys(json) : [],
+        parsedSampleCount: Array.isArray(json?.sample) ? json.sample.length : undefined,
+        parsedVenuesCount: venuesList.length,
+        error: res.ok ? undefined : (json?.error || json?.message || `HTTP ${res.status}`),
+        time: startTime,
       });
-
-      if (!res.ok) {
-        setErr(
-          (json && (json.error || json.message)) ||
-            `API error ${res.status}: ${text?.slice(0, 200) || "No body"}`
-        );
-        setVenues([]);
-        setLoading(false);
-        return;
-      }
-
-      // ✅ accept all your API variants
-      const venuesArray =
-        json?.venues ?? json?.sample ?? json?.data ?? (Array.isArray(json) ? json : []);
-
-      setVenues(Array.isArray(venuesArray) ? venuesArray : []);
-      setLoading(false);
     } catch (e: any) {
-      setErr(e?.message || "Fetch failed (network error)");
       setVenues([]);
+      setDebug({
+        requestUrl,
+        status: undefined,
+        ok: false,
+        contentType: null,
+        textPreview: "",
+        jsonKeys: [],
+        parsedSampleCount: undefined,
+        parsedVenuesCount: 0,
+        error: e?.message || "Fetch failed (network error)",
+        time: startTime,
+      });
+    } finally {
       setLoading(false);
     }
   }
@@ -78,7 +103,7 @@ export default function Page() {
 
   return (
     <main style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 28, marginBottom: 6 }}>Pubs with Playgrounds</h1>
+      <h1 style={{ fontSize: 28, marginBottom: 6 }}>Pubs with Playgrounds ✅ DEBUG</h1>
       <p style={{ opacity: 0.75, marginTop: 0 }}>Demo search (Supabase-powered)</p>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "16px 0" }}>
@@ -103,33 +128,37 @@ export default function Page() {
         </select>
       </div>
 
-      {err && (
-        <pre style={{ background: "#fee", padding: 12, borderRadius: 8, whiteSpace: "pre-wrap" }}>
-          {err}
-        </pre>
-      )}
-
-      {/* 🔥 DEBUG BOX */}
+      {/* ALWAYS visible debug panel */}
       <pre
         style={{
-          background: "#f6f6f6",
+          background: "#111",
+          color: "#eee",
           padding: 12,
           borderRadius: 8,
-          whiteSpace: "pre-wrap",
+          overflowX: "auto",
           fontSize: 12,
+          lineHeight: 1.35,
         }}
       >
-        DEBUG:
-        {"\n"}
-        {debug ? JSON.stringify(debug, null, 2) : "(no debug yet)"}
+{`DEBUG (${debug.time ?? ""})
+requestUrl: ${debug.requestUrl}
+status: ${debug.status ?? "n/a"}  ok: ${String(debug.ok ?? false)}
+content-type: ${debug.contentType ?? "n/a"}
+json keys: ${(debug.jsonKeys ?? []).join(", ") || "n/a"}
+parsed sample count: ${debug.parsedSampleCount ?? "n/a"}
+parsed venues count: ${debug.parsedVenuesCount ?? "n/a"}
+error: ${debug.error ?? "none"}
+
+body preview:
+${debug.textPreview ?? ""}`}
       </pre>
 
       <p style={{ marginTop: 8 }}>{venues.length} venues</p>
 
       <ul style={{ paddingLeft: 16, lineHeight: 1.4 }}>
         {venues.map((v, i) => (
-          <li key={v.id ?? `${v.name}-${i}`} style={{ marginBottom: 10 }}>
-            <strong>{v.name}</strong>
+          <li key={v.id ?? `${v.name ?? "venue"}-${i}`} style={{ marginBottom: 10 }}>
+            <strong>{v.name ?? "(no name)"}</strong>
             {v.address && <div style={{ opacity: 0.8 }}>{v.address}</div>}
           </li>
         ))}
