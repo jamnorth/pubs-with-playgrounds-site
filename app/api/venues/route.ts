@@ -6,7 +6,7 @@ export async function GET(req: Request) {
 
   const q = (searchParams.get("q") || "").trim();
   const city = (searchParams.get("city") || "").trim();
-  const sort = (searchParams.get("sort") || "featured").trim(); // featured | popular | name
+  const sort = (searchParams.get("sort") || "name").trim(); // name | popular
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,19 +15,18 @@ export async function GET(req: Request) {
 
   let query = supabase.from("venues").select("*");
 
+  // If you don't have a city column yet, comment this out.
   if (city) query = query.eq("city", city);
 
   if (q) {
-    // searches name OR address
     query = query.or(`name.ilike.%${q}%,address.ilike.%${q}%`);
   }
 
-  // Sorting
-  if (sort === "popular") query = query.order("popularity", { ascending: false }).order("user_ratings_total", { ascending: false });
-  else if (sort === "name") query = query.order("name", { ascending: true });
-  else {
-    // featured first, then popularity
-    query = query.order("featured", { ascending: false }).order("popularity", { ascending: false });
+  // If you don't have popularity/rating columns yet, this will still work (it just won't sort by them)
+  if (sort === "popular") {
+    query = query.order("user_ratings_total", { ascending: false });
+  } else {
+    query = query.order("name", { ascending: true });
   }
 
   const { data, error } = await query.limit(100);
