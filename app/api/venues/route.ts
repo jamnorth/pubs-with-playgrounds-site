@@ -38,10 +38,6 @@ export async function GET(req: Request) {
 
     // city filter ONLY works if you actually have a city column.
     // If you don’t, comment this block out for now.
-    if (city) {
-      // If you don't have a "city" column yet, this will throw.
-      query = query.eq("city", city);
-    }
 
     // sorting
     if (sort === "name") query = query.order("name", { ascending: true });
