@@ -1,56 +1,54 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-export const dynamic = "force-dynamic";
+export const runtime = "nodejs"; // important: avoid edge surprises
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function GET(req: Request) {
   try {
-    // 1) Confirm route is being hit
-    console.log("✅ /api/venues hit");
-
-    // 2) Read env vars (these names MUST match what you set in Vercel)
-    const url =
-      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const key =
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-
-    if (!url || !key) {
+    if (!supabaseUrl || !supabaseAnonKey) {
       return NextResponse.json(
-        {
-          error: "Missing Supabase env vars",
-          hasUrl: !!url,
-          hasKey: !!key,
-          urlPreview: url ? url.slice(0, 30) + "..." : null,
-          keyPreview: key ? key.slice(0, 12) + "..." : null,
-        },
+        { error: "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY" },
         { status: 500 }
       );
     }
 
-    const supabase = createClient(url, key);
+    const { searchParams } = new URL(req.url);
+    const q = (searchParams.get("q") || "").trim();
+    const city = (searchParams.get("city") || "").trim();
+    const sort = (searchParams.get("sort") || "name").trim();
 
-    // 3) Simple query to prove DB works (no filters yet)
-    const { data, error } = await supabase
-      .from("venues")
-      .select("id,name,address")
-      .limit(5);
+    let query = supabase.from("venues").select("id,name,address,city");
+
+    if (city) query = query.eq("city", city);
+
+    if (q) {
+      // searches name OR address
+      const safe = q.replace(/%/g, "\\%").replace(/_/g, "\\_");
+      query = query.or(`name.ilike.%${safe}%,address.ilike.%${safe}%`);
+    }
+
+    if (sort === "popular") query = query.order("popularity", { ascending: false, nullsFirst: false });
+    else query = query.order("name", { ascending: true });
+
+    // keep it small for demo
+    query = query.limit(200);
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json(
-        { error: "Supabase query failed", details: error },
+        { error: error.message, details: error },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ ok: true, sample: data });
+    return NextResponse.json({ venues: data ?? [] });
   } catch (e: any) {
-    return NextResponse.json(
-      {
-        error: "Route crashed",
-        message: e?.message,
-        stack: e?.stack,
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
   }
 }
