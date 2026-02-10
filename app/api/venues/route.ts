@@ -23,14 +23,15 @@ export async function GET() {
     );
   }
 
-  // 2) Minimal DB hit: just grab 5 rows
+  // 2) Minimal DB hit: grab rows (UI expects `venues`)
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const { data, error } = await supabase
       .from("venues")
       .select("id,name,address")
-      .limit(20);
+      .order("name", { ascending: true })
+      .limit(100);
 
     if (error) {
       return NextResponse.json(
@@ -39,7 +40,13 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({ ok: true, step: "success", sample: data });
+    return NextResponse.json({
+      ok: true,
+      step: "success",
+      count: data?.length ?? 0,
+      venues: data ?? [],              // ✅ THIS fixes your UI
+      sample: (data ?? []).slice(0, 20) // optional helper
+    });
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, step: "crash", message: e?.message || String(e) },
