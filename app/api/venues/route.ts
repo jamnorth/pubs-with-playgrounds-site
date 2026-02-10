@@ -1,34 +1,40 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-export const runtime = "nodejs"; // safe default on Vercel
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
 
-export async function GET() {
-  // Try both common env var sets
-  const supabaseUrl =
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const q = (searchParams.get("q") || "").trim();
+  const city = (searchParams.get("city") || "").trim();
+  const sort = (searchParams.get("sort") || "featured").trim(); // featured | popular | name
 
-  if (!supabaseUrl || !supabaseKey) {
-    return new NextResponse("Missing Supabase env vars.", { status: 500 });
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  let query = supabase.from("venues").select("*");
+
+  if (city) query = query.eq("city", city);
+
+  if (q) {
+    // searches name OR address
+    query = query.or(`name.ilike.%${q}%,address.ilike.%${q}%`);
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  // Sorting
+  if (sort === "popular") query = query.order("popularity", { ascending: false }).order("user_ratings_total", { ascending: false });
+  else if (sort === "name") query = query.order("name", { ascending: true });
+  else {
+    // featured first, then popularity
+    query = query.order("featured", { ascending: false }).order("popularity", { ascending: false });
+  }
 
-  // Adjust table name + fields to match your schema
-  const { data, error } = await supabase
-    .from("venues")
-    .select(
-      "id,name,suburb,city,address,lat,lng,featured,popularity,has_playground,website_url"
-    )
-    .limit(2000);
+  const { data, error } = await query.limit(100);
 
   if (error) {
-    return new NextResponse(error.message, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data ?? []);
+  return NextResponse.json({ venues: data ?? [] });
 }
