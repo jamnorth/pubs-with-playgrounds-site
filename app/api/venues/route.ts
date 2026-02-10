@@ -1,61 +1,60 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-export const runtime = "nodejs"; // important for Vercel
+export const runtime = "nodejs"; // important: avoid edge weirdness
+export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+export async function GET(request: Request) {
   try {
-    const url = new URL(req.url);
-    const q = (url.searchParams.get("q") || "").trim();
-    const city = (url.searchParams.get("city") || "").trim(); // optional
-    const sort = (url.searchParams.get("sort") || "name").trim();
+    const url = new URL(request.url);
 
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    // Use NEXT_PUBLIC vars (fine on server too) since you already set them in Vercel
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       return NextResponse.json(
         {
-          error:
-            "Missing env vars: NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY",
+          error: "Missing env vars",
+          hasUrl: !!SUPABASE_URL,
+          hasAnonKey: !!SUPABASE_ANON_KEY,
         },
         { status: 500 }
       );
     }
 
+    const q = (url.searchParams.get("q") || "").trim();
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // IMPORTANT: only select columns you know exist
+    // Simple query first (no city filter). Limit to 100 for demo.
     let query = supabase
       .from("venues")
-      .select("id,name,address,lat,lng", { count: "exact" })
-      .limit(200);
+      .select("id,name,address,city,suburb,state,website,phone,featured,popular")
+      .order("name", { ascending: true })
+      .limit(100);
 
-    // basic search
+    // Optional search
     if (q) {
-      query = query.or(`name.ilike.%${q}%,address.ilike.%${q}%`);
+      // searches name/address/suburb if those columns exist
+      query = query.or(`name.ilike.%${q}%,address.ilike.%${q}%,suburb.ilike.%${q}%`);
     }
-
-    // city filter ONLY works if you actually have a city column.
-    // If you don’t, comment this block out for now.
-
-    // sorting
-    if (sort === "name") query = query.order("name", { ascending: true });
-    if (sort === "popular") query = query.order("created_at", { ascending: false });
 
     const { data, error } = await query;
 
     if (error) {
+      console.error("Supabase error:", error);
       return NextResponse.json(
-        { error: `Supabase error: ${error.message}`, details: error },
+        { error: "Supabase query failed", details: error },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ venues: data ?? [] }, { status: 200 });
+    return NextResponse.json({ ok: true, count: data?.length ?? 0, venues: data ?? [] });
   } catch (e: any) {
+    console.error("API crash:", e);
     return NextResponse.json(
-      { error: `Server error: ${e?.message || String(e)}` },
+      { error: "API crashed", message: e?.message || String(e) },
       { status: 500 }
     );
   }
