@@ -17,26 +17,45 @@ export default function Page() {
   const [err, setErr] = useState<string | null>(null);
 
   async function load() {
-    setLoading(true);
-    setErr(null);
+  setLoading(true);
+  setErr(null);
 
-    const url = `/api/venues?q=${encodeURIComponent(q)}&city=${encodeURIComponent(
-      city
-    )}&sort=${encodeURIComponent(sort)}`;
+  const url = `/api/venues?q=${encodeURIComponent(q)}&city=${encodeURIComponent(
+    city
+  )}&sort=${encodeURIComponent(sort)}`;
 
-    const res = await fetch(url);
-    const json = await res.json();
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+
+    const text = await res.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = null;
+    }
 
     if (!res.ok) {
-      setErr(json?.error || "Search failed");
+      setErr(
+        (json && (json.error || json.message)) ||
+          `API error ${res.status}: ${text?.slice(0, 200) || "No response body"}`
+      );
       setVenues([]);
       setLoading(false);
       return;
     }
 
-    setVenues(json.venues || []);
+    const venuesArray = Array.isArray(json) ? json : json?.venues;
+
+    setVenues(Array.isArray(venuesArray) ? venuesArray : []);
+    setLoading(false);
+  } catch (e: any) {
+    setErr(e?.message || "Fetch failed (network error)");
+    setVenues([]);
     setLoading(false);
   }
+}
+
 
   useEffect(() => {
     load();
