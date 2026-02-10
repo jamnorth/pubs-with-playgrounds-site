@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from("venues")
-      .select("id,name,address,city,suburb,state,website,phone,featured,popular")
+      .select("id,name,address,city,suburb,state,website,phone,featured")
       .order("name", { ascending: true })
       .limit(100);
 
