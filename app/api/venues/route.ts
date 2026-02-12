@@ -27,26 +27,13 @@ export async function GET(req: Request) {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  let query = supabase
-    .from("venues")
-    .select(
-      [
-        "id",
-        "name",
-        "address",
-        "suburb",
-        "city",
-        "state",
-        "playground",
-        "kids_room",
-        "games_room",
-        "playground_notes",
-        "image_url",
-      ].join(",")
-    )
-    .eq("approved", true)
-    .order("name", { ascending: true })
-    .limit(500);
+ let query = supabase
+  .from("venues")
+  .select("id,name,address,suburb,city,state,outdoor_playground,indoor_playground,kids_room,kids_club,kids_facility_notes,image_url")
+  .eq("approved", true)
+  .or("outdoor_playground.eq.true,indoor_playground.eq.true,kids_room.eq.true,kids_club.eq.true")
+  .order("name", { ascending: true })
+  .limit(500);
 
   // Broader text search
   if (q) {
