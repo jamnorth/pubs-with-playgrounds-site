@@ -4,53 +4,35 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-  // 1) Prove env vars exist (without leaking secrets)
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return NextResponse.json(
-      {
-        ok: false,
-        step: "env",
-        hasUrl: !!SUPABASE_URL,
-        hasAnonKey: !!SUPABASE_ANON_KEY,
-        urlPreview: SUPABASE_URL ? SUPABASE_URL.slice(0, 30) : null,
-        anonLen: SUPABASE_ANON_KEY ? SUPABASE_ANON_KEY.length : null,
-      },
+      { error: "Missing env vars (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)" },
       { status: 500 }
     );
   }
 
-  // 2) Minimal DB hit: grab rows (UI expects `venues`)
-  try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { searchParams } = new URL(req.url);
+  const q = (searchParams.get("q") || "").trim();
 
-    const { data, error } = await supabase
-      .from("venues")
-      .select("id,name,address")
-      .order("name", { ascending: true })
-      .limit(100);
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    if (error) {
-      return NextResponse.json(
-        { ok: false, step: "query", error },
-        { status: 500 }
-      );
-    }
+  let query = supabase
+    .from("venues")
+    .select("id,name,address")
+    .order("name", { ascending: true })
+    .limit(200);
 
-    return NextResponse.json({
-      ok: true,
-      step: "success",
-      count: data?.length ?? 0,
-      venues: data ?? [],              // ✅ THIS fixes your UI
-      sample: (data ?? []).slice(0, 20) // optional helper
-    });
-  } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, step: "crash", message: e?.message || String(e) },
-      { status: 500 }
-    );
+  if (q) query = query.or(`name.ilike.%${q}%,address.ilike.%${q}%`);
+
+  const { data, error } = await query;
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  return NextResponse.json({ venues: data ?? [] });
 }
