@@ -11,6 +11,8 @@ type Venue = {
   lat?: number;
   lng?: number;
 
+  approved?: boolean;
+
   indoor_playground?: boolean;
   outdoor_playground?: boolean;
   kids_room?: boolean;
@@ -25,28 +27,14 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Region dropdown (does not rely on bad "city" values)
   const [region, setRegion] = useState<"all" | "brisbane" | "goldcoast">("all");
-
-  // Facility filters
-  const [indoor, setIndoor] = useState(false);
-  const [outdoor, setOutdoor] = useState(false);
-  const [kidsRoom, setKidsRoom] = useState(false);
-  const [kidsClub, setKidsClub] = useState(false);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
-
     if (q.trim()) params.set("q", q.trim());
     if (region !== "all") params.set("region", region);
-
-    if (indoor) params.set("indoor_playground", "1");
-    if (outdoor) params.set("outdoor_playground", "1");
-    if (kidsRoom) params.set("kids_room", "1");
-    if (kidsClub) params.set("kids_club", "1");
-
     return params.toString();
-  }, [q, region, indoor, outdoor, kidsRoom, kidsClub]);
+  }, [q, region]);
 
   async function load() {
     setLoading(true);
@@ -71,7 +59,6 @@ export default function Page() {
     }
   }
 
-  // load once
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,10 +66,9 @@ export default function Page() {
 
   return (
     <main style={{ padding: 20, maxWidth: 980, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 34, marginBottom: 6 }}>Pubs with Playgrounds</h1>
-
+      <h1 style={{ fontSize: 34, marginBottom: 6 }}>Venue List (All)</h1>
       <p style={{ opacity: 0.75, marginTop: 0 }}>
-        Only venues with an indoor playground, outdoor playground, kids room or kids club.
+        Temporary mode: showing all venues in the database (approved + unapproved).
       </p>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "16px 0" }}>
@@ -107,47 +93,6 @@ export default function Page() {
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="checkbox" checked={indoor} onChange={(e) => setIndoor(e.target.checked)} />
-          Indoor playground
-        </label>
-
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="checkbox" checked={outdoor} onChange={(e) => setOutdoor(e.target.checked)} />
-          Outdoor playground
-        </label>
-
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="checkbox" checked={kidsRoom} onChange={(e) => setKidsRoom(e.target.checked)} />
-          Kids room
-        </label>
-
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="checkbox" checked={kidsClub} onChange={(e) => setKidsClub(e.target.checked)} />
-          Kids club
-        </label>
-
-        <button onClick={load} style={{ padding: "8px 12px" }}>
-          Apply
-        </button>
-
-        <button
-          onClick={() => {
-            setQ("");
-            setRegion("all");
-            setIndoor(false);
-            setOutdoor(false);
-            setKidsRoom(false);
-            setKidsClub(false);
-            setTimeout(load, 0);
-          }}
-          style={{ padding: "8px 12px" }}
-        >
-          Clear
-        </button>
-      </div>
-
       {err && <pre style={{ background: "#fee", padding: 12 }}>{err}</pre>}
 
       <p>{venues.length} venues</p>
@@ -155,9 +100,15 @@ export default function Page() {
       <ul style={{ paddingLeft: 16, lineHeight: 1.35 }}>
         {venues.map((v, i) => (
           <li key={v.id ?? `${v.name}-${i}`} style={{ marginBottom: 14 }}>
-            <strong>{v.name}</strong>
+            <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+              <strong>{v.name}</strong>
+              {v.approved ? (
+                <span style={{ fontSize: 12, opacity: 0.7 }}>✅ approved</span>
+              ) : (
+                <span style={{ fontSize: 12, opacity: 0.7 }}>⚠️ not approved</span>
+              )}
+            </div>
 
-            {/* ✅ show suburb + state ONLY (city was unreliable) */}
             {(v.suburb || v.state) && (
               <div style={{ opacity: 0.7 }}>
                 {[v.suburb, v.state].filter(Boolean).join(", ")}
@@ -166,7 +117,7 @@ export default function Page() {
 
             {v.address && <div style={{ opacity: 0.85 }}>{v.address}</div>}
 
-            <div style={{ marginTop: 6 }}>
+            <div style={{ marginTop: 6, opacity: 0.9 }}>
               {v.indoor_playground && <div>✅ Indoor playground</div>}
               {v.outdoor_playground && <div>✅ Outdoor playground</div>}
               {v.kids_room && <div>✅ Kids room</div>}
