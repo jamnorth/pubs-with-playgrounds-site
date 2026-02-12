@@ -20,12 +20,6 @@ export async function GET(req: Request) {
   const q = (searchParams.get("q") || "").trim();
   const region = (searchParams.get("region") || "all").toLowerCase();
 
-  // optional facility checkboxes
-  const indoor = searchParams.get("indoor_playground") === "1";
-  const outdoor = searchParams.get("outdoor_playground") === "1";
-  const kidsRoom = searchParams.get("kids_room") === "1";
-  const kidsClub = searchParams.get("kids_club") === "1";
-
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let query = supabase
@@ -39,6 +33,7 @@ export async function GET(req: Request) {
         "state",
         "lat",
         "lng",
+        "approved",
         "indoor_playground",
         "outdoor_playground",
         "kids_room",
@@ -46,13 +41,10 @@ export async function GET(req: Request) {
         "kids_facility_notes",
       ].join(",")
     )
-    .eq("approved", true)
-    // ✅ HARD GATE: must have one of the allowed kids facilities
-    .or("indoor_playground.eq.true,outdoor_playground.eq.true,kids_room.eq.true,kids_club.eq.true")
     .order("name", { ascending: true })
-    .limit(500);
+    .limit(1000);
 
-  // Search across common fields
+  // broad text search
   if (q) {
     const like = `%${q}%`;
     query = query.or(
@@ -66,13 +58,7 @@ export async function GET(req: Request) {
     );
   }
 
-  // Facility filters (AND)
-  if (indoor) query = query.eq("indoor_playground", true);
-  if (outdoor) query = query.eq("outdoor_playground", true);
-  if (kidsRoom) query = query.eq("kids_room", true);
-  if (kidsClub) query = query.eq("kids_club", true);
-
-  // Region filter using lat/lng (does NOT rely on "city")
+  // Region filter using lat/lng (optional)
   if (region === "brisbane") {
     query = query.gte("lat", -27.75).lte("lat", -27.2).gte("lng", 152.85).lte("lng", 153.35);
   } else if (region === "goldcoast") {
