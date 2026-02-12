@@ -23,10 +23,13 @@ export async function GET(req: Request) {
   let query = supabase
     .from("venues")
     .select("id,name,address")
+    .eq("approved", true)
     .order("name", { ascending: true })
     .limit(200);
 
-  if (q) query = query.or(`name.ilike.%${q}%,address.ilike.%${q}%`);
+  if (q) {
+    query = query.or(`name.ilike.%${q}%,address.ilike.%${q}%`);
+  }
 
   const { data, error } = await query;
 
@@ -34,5 +37,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // ✅ THIS is what your frontend expects
   return NextResponse.json({ venues: data ?? [] });
 }
