@@ -16,26 +16,39 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-
   const q = (searchParams.get("q") || "").trim();
 
-  // filters: "1" means on
-  const playground = searchParams.get("playground") === "1";
+  const indoor = searchParams.get("indoor_playground") === "1";
+  const outdoor = searchParams.get("outdoor_playground") === "1";
   const kidsRoom = searchParams.get("kids_room") === "1";
-  const gamesRoom = searchParams.get("games_room") === "1";
-  const anyKids = searchParams.get("any_kids") === "1";
+  const kidsClub = searchParams.get("kids_club") === "1";
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
- let query = supabase
-  .from("venues")
-  .select("id,name,address,suburb,city,state,outdoor_playground,indoor_playground,kids_room,kids_club,kids_facility_notes,image_url")
-  .eq("approved", true)
-  .or("outdoor_playground.eq.true,indoor_playground.eq.true,kids_room.eq.true,kids_club.eq.true")
-  .order("name", { ascending: true })
-  .limit(500);
+  let query = supabase
+    .from("venues")
+    .select(
+      [
+        "id",
+        "name",
+        "address",
+        "suburb",
+        "city",
+        "state",
+        "indoor_playground",
+        "outdoor_playground",
+        "kids_room",
+        "kids_club",
+        "kids_facility_notes",
+      ].join(",")
+    )
+    .eq("approved", true)
+    // ✅ HARD GATE: must have one of the allowed kids facilities
+    .or("indoor_playground.eq.true,outdoor_playground.eq.true,kids_room.eq.true,kids_club.eq.true")
+    .order("name", { ascending: true })
+    .limit(500);
 
-  // Broader text search
+  // broader text search
   if (q) {
     const like = `%${q}%`;
     query = query.or(
@@ -45,20 +58,16 @@ export async function GET(req: Request) {
         `suburb.ilike.${like}`,
         `city.ilike.${like}`,
         `state.ilike.${like}`,
-        `playground_notes.ilike.${like}`,
+        `kids_facility_notes.ilike.${like}`,
       ].join(",")
     );
   }
 
-  // Kids filters
-  // any_kids = OR across the three flags
-  if (anyKids) {
-    query = query.or("playground.eq.true,kids_room.eq.true,games_room.eq.true");
-  } else {
-    if (playground) query = query.eq("playground", true);
-    if (kidsRoom) query = query.eq("kids_room", true);
-    if (gamesRoom) query = query.eq("games_room", true);
-  }
+  // Optional: if user ticks any specific filters, apply them
+  if (indoor) query = query.eq("indoor_playground", true);
+  if (outdoor) query = query.eq("outdoor_playground", true);
+  if (kidsRoom) query = query.eq("kids_room", true);
+  if (kidsClub) query = query.eq("kids_club", true);
 
   const { data, error } = await query;
 
