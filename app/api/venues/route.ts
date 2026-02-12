@@ -16,29 +16,62 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
+
   const q = (searchParams.get("q") || "").trim();
+
+  // filters: "1" means on
+  const playground = searchParams.get("playground") === "1";
+  const kidsRoom = searchParams.get("kids_room") === "1";
+  const gamesRoom = searchParams.get("games_room") === "1";
+  const anyKids = searchParams.get("any_kids") === "1";
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let query = supabase
     .from("venues")
-    .select("id,name,address")
+    .select(
+      [
+        "id",
+        "name",
+        "address",
+        "suburb",
+        "city",
+        "state",
+        "playground",
+        "kids_room",
+        "games_room",
+        "playground_notes",
+        "image_url",
+      ].join(",")
+    )
     .eq("approved", true)
     .order("name", { ascending: true })
-    .limit(200);
+    .limit(500);
 
+  // Broader text search
   if (q) {
-  query = query.or(
-    [
-      `name.ilike.%${q}%`,
-      `address.ilike.%${q}%`,
-      `suburb.ilike.%${q}%`,
-      `city.ilike.%${q}%`,
-      `state.ilike.%${q}%`,
-      `playground_notes.ilike.%${q}%`,
-    ].join(",")
-  );
-}
+    const like = `%${q}%`;
+    query = query.or(
+      [
+        `name.ilike.${like}`,
+        `address.ilike.${like}`,
+        `suburb.ilike.${like}`,
+        `city.ilike.${like}`,
+        `state.ilike.${like}`,
+        `playground_notes.ilike.${like}`,
+      ].join(",")
+    );
+  }
+
+  // Kids filters
+  // any_kids = OR across the three flags
+  if (anyKids) {
+    query = query.or("playground.eq.true,kids_room.eq.true,games_room.eq.true");
+  } else {
+    if (playground) query = query.eq("playground", true);
+    if (kidsRoom) query = query.eq("kids_room", true);
+    if (gamesRoom) query = query.eq("games_room", true);
+  }
 
   const { data, error } = await query;
 
@@ -46,6 +79,5 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // ✅ THIS is what your frontend expects
-  return NextResponse.json({ venues: data ?? [], version: "NEW CODE LIVE" });
+  return NextResponse.json({ venues: data ?? [] });
 }
