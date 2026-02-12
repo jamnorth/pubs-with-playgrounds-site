@@ -16,9 +16,11 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const q = (searchParams.get("q") || "").trim();
 
-  // optional checkboxes
+  const q = (searchParams.get("q") || "").trim();
+  const region = (searchParams.get("region") || "all").toLowerCase();
+
+  // optional facility checkboxes
   const indoor = searchParams.get("indoor_playground") === "1";
   const outdoor = searchParams.get("outdoor_playground") === "1";
   const kidsRoom = searchParams.get("kids_room") === "1";
@@ -34,8 +36,9 @@ export async function GET(req: Request) {
         "name",
         "address",
         "suburb",
-        "city",
         "state",
+        "lat",
+        "lng",
         "indoor_playground",
         "outdoor_playground",
         "kids_room",
@@ -44,12 +47,12 @@ export async function GET(req: Request) {
       ].join(",")
     )
     .eq("approved", true)
-    // ✅ HARD GATE: must have one of these kids facilities
+    // ✅ HARD GATE: must have one of the allowed kids facilities
     .or("indoor_playground.eq.true,outdoor_playground.eq.true,kids_room.eq.true,kids_club.eq.true")
     .order("name", { ascending: true })
     .limit(500);
 
-  // broader text search
+  // Search across common fields
   if (q) {
     const like = `%${q}%`;
     query = query.or(
@@ -57,18 +60,24 @@ export async function GET(req: Request) {
         `name.ilike.${like}`,
         `address.ilike.${like}`,
         `suburb.ilike.${like}`,
-        `city.ilike.${like}`,
         `state.ilike.${like}`,
         `kids_facility_notes.ilike.${like}`,
       ].join(",")
     );
   }
 
-  // if user ticks specific facility filters, apply them (AND)
+  // Facility filters (AND)
   if (indoor) query = query.eq("indoor_playground", true);
   if (outdoor) query = query.eq("outdoor_playground", true);
   if (kidsRoom) query = query.eq("kids_room", true);
   if (kidsClub) query = query.eq("kids_club", true);
+
+  // Region filter using lat/lng (does NOT rely on "city")
+  if (region === "brisbane") {
+    query = query.gte("lat", -27.75).lte("lat", -27.2).gte("lng", 152.85).lte("lng", 153.35);
+  } else if (region === "goldcoast") {
+    query = query.gte("lat", -28.35).lte("lat", -27.85).gte("lng", 153.2).lte("lng", 153.55);
+  }
 
   const { data, error } = await query;
 
