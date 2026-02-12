@@ -28,8 +28,17 @@ export async function GET(req: Request) {
     .limit(200);
 
   if (q) {
-    query = query.or(`name.ilike.%${q}%,address.ilike.%${q}%`);
-  }
+  query = query.or(
+    [
+      `name.ilike.%${q}%`,
+      `address.ilike.%${q}%`,
+      `suburb.ilike.%${q}%`,
+      `city.ilike.%${q}%`,
+      `state.ilike.%${q}%`,
+      `playground_notes.ilike.%${q}%`,
+    ].join(",")
+  );
+}
 
   const { data, error } = await query;
 
