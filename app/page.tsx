@@ -9,11 +9,13 @@ type Venue = {
   suburb?: string;
   city?: string;
   state?: string;
-  playground?: boolean;
+
+  indoor_playground?: boolean;
+  outdoor_playground?: boolean;
   kids_room?: boolean;
-  games_room?: boolean;
-  playground_notes?: string;
-  image_url?: string;
+  kids_club?: boolean;
+
+  kids_facility_notes?: string;
 };
 
 export default function Page() {
@@ -22,27 +24,23 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Filters
-  const [anyKids, setAnyKids] = useState(true);
-  const [playground, setPlayground] = useState(false);
+  // Facility filters (optional)
+  const [indoor, setIndoor] = useState(false);
+  const [outdoor, setOutdoor] = useState(false);
   const [kidsRoom, setKidsRoom] = useState(false);
-  const [gamesRoom, setGamesRoom] = useState(false);
+  const [kidsClub, setKidsClub] = useState(false);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     if (q.trim()) params.set("q", q.trim());
 
-    // any_kids overrides the individual ones in the API
-    if (anyKids) {
-      params.set("any_kids", "1");
-    } else {
-      if (playground) params.set("playground", "1");
-      if (kidsRoom) params.set("kids_room", "1");
-      if (gamesRoom) params.set("games_room", "1");
-    }
+    if (indoor) params.set("indoor_playground", "1");
+    if (outdoor) params.set("outdoor_playground", "1");
+    if (kidsRoom) params.set("kids_room", "1");
+    if (kidsClub) params.set("kids_club", "1");
 
     return params.toString();
-  }, [q, anyKids, playground, kidsRoom, gamesRoom]);
+  }, [q, indoor, outdoor, kidsRoom, kidsClub]);
 
   async function load() {
     setLoading(true);
@@ -74,73 +72,73 @@ export default function Page() {
 
   return (
     <main style={{ padding: 20, maxWidth: 980, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 34, marginBottom: 6 }}>Family-Friendly Venues</h1>
+      <h1 style={{ fontSize: 34, marginBottom: 6 }}>Pubs with Playgrounds</h1>
       <p style={{ opacity: 0.75, marginTop: 0 }}>
-        Eating & drinking venues with kids entertainment (playgrounds, kids rooms, games/arcades).
+        Only venues with an indoor playground, outdoor playground, kids room or kids club.
       </p>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "16px 0" }}>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search name, address, suburb, notes…"
-          style={{ padding: 10, minWidth: 320 }}
+          placeholder="Search name, address, suburb, city…"
+          style={{ padding: 10, minWidth: 340 }}
         />
         <button onClick={load} style={{ padding: "10px 14px" }}>
           {loading ? "Searching…" : "Search"}
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 14,
+          flexWrap: "wrap",
+          marginBottom: 16,
+          padding: 12,
+          border: "1px solid rgba(0,0,0,0.1)",
+          borderRadius: 10,
+        }}
+      >
+        <strong style={{ marginRight: 6 }}>Filter by facility:</strong>
+
         <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="checkbox"
-            checked={anyKids}
-            onChange={(e) => {
-              const on = e.target.checked;
-              setAnyKids(on);
-              if (on) {
-                setPlayground(false);
-                setKidsRoom(false);
-                setGamesRoom(false);
-              }
-            }}
-          />
-          Any kids entertainment
+          <input type="checkbox" checked={indoor} onChange={(e) => setIndoor(e.target.checked)} />
+          Indoor playground
         </label>
 
-        <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: anyKids ? 0.5 : 1 }}>
-          <input
-            type="checkbox"
-            checked={playground}
-            disabled={anyKids}
-            onChange={(e) => setPlayground(e.target.checked)}
-          />
-          Playground
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input type="checkbox" checked={outdoor} onChange={(e) => setOutdoor(e.target.checked)} />
+          Outdoor playground
         </label>
 
-        <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: anyKids ? 0.5 : 1 }}>
-          <input
-            type="checkbox"
-            checked={kidsRoom}
-            disabled={anyKids}
-            onChange={(e) => setKidsRoom(e.target.checked)}
-          />
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input type="checkbox" checked={kidsRoom} onChange={(e) => setKidsRoom(e.target.checked)} />
           Kids room
         </label>
 
-        <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: anyKids ? 0.5 : 1 }}>
-          <input
-            type="checkbox"
-            checked={gamesRoom}
-            disabled={anyKids}
-            onChange={(e) => setGamesRoom(e.target.checked)}
-          />
-          Games / arcade room
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input type="checkbox" checked={kidsClub} onChange={(e) => setKidsClub(e.target.checked)} />
+          Kids club
         </label>
 
-        <button onClick={load} style={{ padding: "8px 12px" }}>
-          Apply filters
+        <button onClick={load} style={{ padding: "8px 12px", marginLeft: "auto" }}>
+          Apply
+        </button>
+
+        <button
+          onClick={() => {
+            setIndoor(false);
+            setOutdoor(false);
+            setKidsRoom(false);
+            setKidsClub(false);
+            // optional: also clear search
+            // setQ("");
+            setTimeout(load, 0);
+          }}
+          style={{ padding: "8px 12px" }}
+        >
+          Clear
         </button>
       </div>
 
@@ -152,25 +150,5 @@ export default function Page() {
         {venues.map((v, i) => (
           <li key={v.id ?? `${v.name}-${i}`} style={{ marginBottom: 14 }}>
             <strong>{v.name}</strong>
-            {(v.suburb || v.city || v.state) && (
-              <div style={{ opacity: 0.75 }}>
-                {[v.suburb, v.city, v.state].filter(Boolean).join(", ")}
-              </div>
-            )}
-            {v.address && <div style={{ opacity: 0.8 }}>{v.address}</div>}
 
-            <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap", opacity: 0.85 }}>
-              {v.playground ? <span>✅ Playground</span> : null}
-              {v.kids_room ? <span>✅ Kids room</span> : null}
-              {v.games_room ? <span>✅ Games</span> : null}
-            </div>
-
-            {v.playground_notes && (
-              <div style={{ marginTop: 6, opacity: 0.7, fontSize: 14 }}>{v.playground_notes}</div>
-            )}
-          </li>
-        ))}
-      </ul>
-    </main>
-  );
-}
+            {(v.suburb || v.cit
