@@ -38,5 +38,5 @@ export async function GET(req: Request) {
   }
 
   // ✅ THIS is what your frontend expects
-  return NextResponse.json({ venues: data ?? [] });
+  return NextResponse.json({ venues: data ?? [], version: "NEW CODE LIVE" });
 }
